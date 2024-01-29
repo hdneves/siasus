@@ -3,19 +3,15 @@ import pyodbc
 import pandas as pd
 import os 
 import shutil
-import dask.dataframe as dd
 import glob
 
 from tqdm import tqdm
 from pysus.online_data.SIA import download, show_datatypes
-from pysus.online_data import parquets_to_dataframe
-from datetime import datetime, timedelta
-from time import sleep
-from pathlib import Path
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import create_engine
-from constants import STATES, DIR_LIB, CLASS_DICT, STRING_CONNECTION, DIR_DOWNLOAD, QUERY_SQL
-from dask.diagnostics import ProgressBar
+from constants import STATES, CLASS_DICT, STRING_CONNECTION, DIR_DOWNLOAD, QUERY_SQL
+from joblib import Parallel, delayed
 
 def configure_logging() -> logging:
     """
@@ -59,7 +55,7 @@ def delete_files(
         delete_files('/path/to/directory')
         
     """
-    for folder in os.listdir(download_dir): #11 40071790; 0800 646 8378; 7867751 protoloco xp
+    for folder in os.listdir(download_dir):
         folder_path = os.path.join(download_dir, folder)
         shutil.rmtree(folder_path)
 
@@ -209,32 +205,28 @@ def download_files(
             _download_files(month_range=6, num_months_ago=3, id_acronym='PA', download_dir='my_directory', states=['UF1', 'UF2'])
     """
 
-    last_six_months = []
     current_date = datetime.now().replace(day=1) - relativedelta(months=num_months_ago)
     print('current_date2', current_date)
-    for i in range(month_range):
-        target_date = current_date - relativedelta(months=i)
-        last_six_months.append(target_date)
 
-    for uf in tqdm(states):
+    last_six_months = [current_date - relativedelta(months=i) for i in range(month_range)]
 
-        #logger.info(f' --> Downloading UF: {uf} <-- ')
-        print(uf)
+    print(last_six_months)
+
+    def baixar_uf(uf):
         for month in last_six_months:
             year = month.year
             month_num = month.month
             #logger.info(f'Year-Month: {year}-{month_num}')
-          
             download(states=uf, years=year, months=month_num, group=id_acronym, data_dir=download_dir)
     
-        #logger.info('----------------------------------------/next-papge/-----------------------------------------------')
+    resultado = Parallel(n_jobs=4)(delayed(baixar_uf)(uf) for uf in states)
     
 
 if __name__ == "__main__":
     #logger = configure_logging()
-    download_files()
-    delete_table_sql()
+    download_files(month_range=1, states=['AC', 'TO'])
+    #delete_table_sql()
     dataframe = concat_and_filter()
     #dataframe = pd.read_csv('backup_datasus.csv', delimiter=',')
-    update_data_sql(dataframe=dataframe)
+    #update_data_sql(dataframe=dataframe)
     
