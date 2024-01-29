@@ -219,7 +219,7 @@ def download_files(
             #logger.info(f'Year-Month: {year}-{month_num}')
             download(states=uf, years=year, months=month_num, group=id_acronym, data_dir=download_dir)
     
-    resultado = Parallel(n_jobs=4)(delayed(baixar_uf)(uf) for uf in states)
+    Parallel(n_jobs=4)(delayed(baixar_uf)(uf) for uf in states)
     
 
 if __name__ == "__main__":
